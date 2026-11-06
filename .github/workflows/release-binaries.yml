@@ -207,8 +207,7 @@ jobs:
         run: glslangValidator --version
 
       # Eden builds its Windows PGO binaries with MSYS2's clang toolchain, so we do the same. The
-      # package list is docs/Deps.md (MSYS2) plus MSYS2's FFmpeg: the bundled ffmpeg-ci package
-      # has no AV1 decoder, so Switch 2 AV1 movies were skipped in this build (#311, #407).
+      # package list is docs/Deps.md (MSYS2) plus what the bundled FFmpeg needs to compile.
       - name: Set up MSYS2
         if: matrix.mingw
         uses: msys2/setup-msys2@v2
@@ -224,7 +223,7 @@ jobs:
             openssl:p boost:p fmt:p lz4:p nlohmann-json:p zlib:p zstd:p libiconv:p
             vulkan-memory-allocator:p vulkan-devel:p glslang:p enet:p opus:p
             libusb:p unordered_dense:p jbigkit:p xz:p libdeflate:p bzip2:p
-            lerc:p graphite2:p libwebp:p libtiff:p brotli:p ccache:p ffmpeg:p
+            lerc:p graphite2:p libwebp:p libtiff:p brotli:p ccache:p
 
       - name: Restore CPM downloads
         id: cpm-cache
@@ -346,7 +345,7 @@ jobs:
             -DYUZU_ROOM_STANDALONE=OFF \
             -DYUZU_USE_BUNDLED_QT=OFF \
             -DYUZU_USE_BUNDLED_SDL3=ON \
-            -DYUZU_USE_BUNDLED_FFMPEG=OFF \
+            -DYUZU_USE_BUNDLED_FFMPEG=ON \
             -DVulkanHeaders_FORCE_BUNDLED=ON \
             -DVulkanUtilityLibraries_FORCE_BUNDLED=ON \
             -DENABLE_UPDATE_CHECKER=ON \
@@ -397,9 +396,8 @@ jobs:
             .sccache
           key: ${{ steps.compiler-cache.outputs.cache-primary-key }}
 
-      # Plain tar.gz with the two programs. GitHub artifacts drop the executable bit, so a tar is
-      # what keeps it. This one is not self-contained: it needs Qt 6 and the usual libraries
-      # installed on the system.
+      # Plain tar.gz with the two programs and switch defaults. GitHub artifacts drop executable
+      # bits, so a tar preserves them. This needs Qt 6 and the usual system libraries installed.
       - name: Package Linux tar.gz
         if: startsWith(matrix.platform, 'linux')
         shell: bash
@@ -409,7 +407,7 @@ jobs:
           test -x build/release/bin/eden-cli
           strip build/release/bin/lichii build/release/bin/eden-cli
           tar -czf "lichii-${GITHUB_SHA}-${{ matrix.platform }}.tar.gz" \
-            -C build/release/bin lichii eden-cli
+            -C build/release/bin lichii eden-cli nx2_switches.txt
           ls -la "lichii-${GITHUB_SHA}-${{ matrix.platform }}.tar.gz"
 
       # A self-contained AppImage: linuxdeploy bundles every library the two programs need except
@@ -443,6 +441,8 @@ jobs:
           export LDAI_OUTPUT="lichii-${GITHUB_SHA}-${{ matrix.platform }}.AppImage"
           export OUTPUT="$LDAI_OUTPUT"
           export ARCH="$arch"
+          mkdir -p AppDir/usr/bin
+          cp build/release/bin/nx2_switches.txt AppDir/usr/bin/
           "$tools/linuxdeploy-$arch.AppImage" --appdir AppDir \
             --executable build/release/bin/lichii \
             --executable build/release/bin/eden-cli \
