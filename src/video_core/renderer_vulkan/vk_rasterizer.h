@@ -107,6 +107,7 @@ public:
     GpuWrittenList ReadGpuWrittenCommandList(DAddr addr, std::span<u8> out,
                                              bool past_sync) override;
     void NoteGpuWrittenCommandListSynced(DAddr page) override;
+    void FlushGpuWrittenCommandListPages(std::span<const DAddr> pages) override;
     bool MustFlushRegion(DAddr addr, u64 size,
                          VideoCommon::CacheType which = VideoCommon::CacheType::All) override;
     VideoCore::RasterizerDownloadArea GetFlushArea(DAddr addr, u64 size) override;
@@ -264,8 +265,6 @@ private:
     AccelerateDMA accelerate_dma;
     FenceManager fence_manager;
     FrameDump frame_dump;
-
-    vk::Event wfi_event;
 
     boost::container::static_vector<u32, MAX_IMAGE_VIEWS> image_view_indices;
     std::array<VideoCommon::ImageViewId, MAX_IMAGE_VIEWS> image_view_ids;
