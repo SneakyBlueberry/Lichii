@@ -186,6 +186,11 @@ Decoder::Decoder(Tegra::Host1x::NvdecCommon::VideoCodec codec) {
         }
     }
 #endif
+    // FFmpeg's own AV1 decoder only decodes through a hardware accelerator, so ask for libdav1d
+    // by name rather than relying on the library's decoder order.
+    if (!m_codec && av_codec == AV_CODEC_ID_AV1) {
+        m_codec = avcodec_find_decoder_by_name("libdav1d");
+    }
     if (!m_codec) {
         m_codec = avcodec_find_decoder(av_codec);
     }
